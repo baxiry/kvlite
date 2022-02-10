@@ -48,7 +48,7 @@ func getRootPath() string {
 func (Helper) remoteZip(cli *goph.Client, dir string) error {
 	// zip the client bot app
 	// zip -r test.zip testbot
-	cmd, err := cli.Command("zip", "-r", dir+".zip", dir)
+	cmd, err := cli.Command("tar", "-czf", dir+".tar.gz", dir)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (Helper) download(addr string) error {
 				return errors.New("remote zip err: " + err.Error())
 			}
 
-			err = sshcli.Download("/root/"+dirbot+".zip", dirbot+".zip")
+			err = sshcli.Download("/root/"+dirbot+".tar.gz", dirbot+".tar.gz")
 			if err != nil {
 				return errors.New("download" + err.Error())
 			}
