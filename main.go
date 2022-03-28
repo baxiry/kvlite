@@ -38,6 +38,57 @@ var (
 	botLine        = "testBot"
 )
 
+func (Helper) appendData(newEerror string) {
+	file, err := os.OpenFile("./errors.host", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Could not open errors.host")
+		return
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(newEerror)
+
+	if err != nil {
+		fmt.Println("Could not write text to example.txt")
+		return
+	}
+}
+
+// run
+func main() {
+
+	for {
+
+		hosts, err := h.load(activeBots)
+		if err != nil {
+			fmt.Println(err)
+			//h.appendData(err.Error() + "\n")
+			goto here
+		}
+
+		for _, host := range hosts {
+
+			//host := host
+			//go func(host string) {
+			fmt.Println("download from:", host)
+
+			err := h.download(host)
+			if err != nil {
+				h.appendData(host + "  " + err.Error() + "\n")
+				fmt.Println(host, err.Error())
+			} else {
+				fmt.Println("Done")
+			}
+
+			//}(host)
+		}
+	here:
+		fmt.Println("sleep")
+		time.Sleep(time.Minute)
+
+	}
+}
+
 // TODO create func thar return root path depade on os
 func getRootPath() string {
 	// do more
@@ -82,41 +133,14 @@ func (Helper) download(addr string) error {
 				return errors.New("remote zip err: " + err.Error())
 			}
 
-			err = sshcli.Download("/root/"+dirbot+".tar.gz", dirbot+".tar.gz")
-			if err != nil {
-				return errors.New("download" + err.Error())
-			}
+			//err = sshcli.Download("/root/"+dirbot+".tar.gz", dirbot+".tar.gz")
+			//if err != nil {
+			//	return errors.New("download" + err.Error())
+			//}
 		}
 	}
 
 	return nil
-}
-
-// run
-func main() {
-
-	for {
-		hosts, err := h.load(activeBots)
-		if err != nil {
-			fmt.Println(err)
-			goto here
-		}
-
-		for _, host := range hosts {
-
-			fmt.Println("downloading from:", host)
-
-			err := h.download(host)
-			if err != nil {
-				fmt.Printf("err with host %s: \n %s\n", host, err.Error())
-			}
-			fmt.Printf("Done\n")
-
-		}
-	here:
-		time.Sleep(time.Minute)
-
-	}
 }
 
 // deploy deploy client-bot.zip to client host
