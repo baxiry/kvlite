@@ -17,7 +17,7 @@ type CachedIndexs struct {
 	indexs [][2]int64
 }
 
-var IndexsCache *CachedIndexs
+var IndexsCache = CachedIndexs{}
 
 func initIndexsFile() {
 	// check if primary.index is exist
@@ -40,7 +40,7 @@ func initIndexsFile() {
 func initIndex() {
 	indexFilePath := db.Name + db.Collection + pi
 	db.PrimaryIndex = lastIndex(indexFilePath)
-	IndexsCache = NewCachedIndexs()
+	IndexsCache = *NewCachedIndexs()
 
 	println("initialize Cached indexs, length is  ", len(IndexsCache.indexs))
 }
@@ -127,7 +127,7 @@ func NewIndex(indexFile *os.File, at int, dataSize int) {
 	}
 
 	//indexFile.WriteString(strInt)
-	indexFile.WriteAt([]byte(strInt), (db.PrimaryIndex)*20)
+	indexFile.WriteAt([]byte(strInt), db.PrimaryIndex*20)
 
 	IndexsCache.indexs = append(IndexsCache.indexs, [2]int64{int64(at), int64(dataSize)})
 }
@@ -169,7 +169,7 @@ func UpdateIndex(indexFile *os.File, id int, dataAt, dataSize int64) {
 	_, err := indexFile.WriteAt([]byte(strIndex), at)
 	if err != nil {
 		fmt.Println("id & at is ", id, at)
-		fmt.Println("err when UpdateIndex, store.go line 127", err)
+		fmt.Println("err when UpdateIndex, store.go ", err)
 
 	}
 

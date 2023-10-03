@@ -136,9 +136,11 @@ func SelectById(query string) (result string) {
 
 // appends data to Pagefile & returns file size or error
 func Append(file *os.File, data string) (size int, err error) {
+	//println("At", At)
 	size, err = file.WriteAt([]byte(data), int64(At))
 	if err != nil {
 		eLog.Println("Error WriteString ", err)
+		os.Exit(1)
 	}
 	return size, err
 }
