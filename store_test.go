@@ -6,54 +6,44 @@ import (
 	"testing"
 )
 
-var (
-	DataFile  *os.File
-	IndexFile *os.File
-	indexs    *CachedIndexs
-)
+var DataFile *os.File
+var IndexFile *os.File
+var err error
 
-func init() {
-	indexs = &CachedIndexs{}
-}
+// , _ = os.OpenFile("mok/primary.indexs", os.O_RDWR|os.O_CREATE, 0644) // why not "os.O_APPEND" ?
 
 // testing all data storeing functions
 func Test_Append(t *testing.T) {
+	DataFile, err = os.OpenFile("mok/data.page", os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
 
-	DataFile, _ = os.OpenFile("mok/data.page", os.O_RDWR|os.O_CREATE, 0644)
-	IndexFile, _ = os.OpenFile("mok/primary.indexs", os.O_RDWR|os.O_CREATE, 0644) // why not "os.O_APPEND" ?
+		t.Error("canot open mok data.page\n")
+	}
+	defer DataFile.Close()
 
 	var at int64
-	for i := 0; i <= 11; i++ {
+	for i := 0; i < 13; i++ {
 
 		data := "hello world ok " + fmt.Sprint(i)
 
 		lenByte, err := Append(DataFile, data)
 
 		if err != nil {
-			fmt.Println("error is : ", err)
+			t.Error("error is : ", err)
 		}
 
-		_ = Get(DataFile, at, lenByte)
-		//fmt.Printf("Data is %s: \nlen byte is %d, at is %d\n\n", myData, lenByte, at)
+		myData := Get(DataFile, at, lenByte)
+		fmt.Printf("Data is %s: \nlen byte is %d, at is %d\n\n", myData, lenByte, at)
 		at += int64(lenByte)
 	}
-	fmt.Println("Done")
 }
 
 // testing all index functions
 func Test_All_Index_Funcs(t *testing.T) {
 
-	fmt.Println("Test newIndex func")
-	state, _ := IndexFile.Stat()
-	fmt.Println("index file size is : ", state.Size())
-	fmt.Println("file name ", IndexFile.Name())
-	fmt.Println("file name ", IndexFile)
-	fmt.Println("=========================")
-
 	// testing NewIndex func
-	for i := 0; i < 1111; i++ {
-		NewIndex(IndexFile, i, i)
-		fmt.Println("at", i, "size", i)
+	for i := 0; i <= 1111; i++ {
+		AppendIndex(IndexFile, int64(i), i)
 	}
 
 	// testing GetIndex func
@@ -141,9 +131,10 @@ func Test_lastIndex(t *testing.T) {
 
 func Test_finish(t *testing.T) {
 	DataFile.Close()
-	os.Remove("mok/primary.indexs")
+	// os.Remove("mok/primary.indexs")
 
 	IndexFile.Close()
-	os.Remove("mok/primary.indexs")
+	// os.Remove("mok/primary.indexs")
+	// println("Done")
 
 }

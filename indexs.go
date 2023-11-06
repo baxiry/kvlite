@@ -1,7 +1,6 @@
 package dblite
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,102 +8,108 @@ import (
 	"strings"
 )
 
-// buffer size of len
-const IndexChnucLen = 20
+const (
+	// pIndex is primary index file sufix
+	pIndex = "pi"
 
-// [[0,3],[3,8]]
-type CachedIndexs struct {
-	indexs [][2]int64
+	// size of index buffer
+	IndexChunkLen = 20
+)
+
+// Index stor at primaryIndex & indexCache
+type Index struct { // Index
+	// at : data locations store in file
+	at int64
+	// current primaryIndex value
+	primaryIndex int64
+	// indexes cache
+	indexCache [][2]int64 // [[0,3],[3,8]]
 }
 
-var IndexsCache = CachedIndexs{}
-
-func initIndexsFile() {
-	// check if primary.index is exist
-	indexFilePath := db.Name + db.Collection + pi
-	_, err := os.Stat(indexFilePath)
-	if errors.Is(err, os.ErrNotExist) {
-		IndexsFile, err := os.OpenFile(indexFilePath, os.O_CREATE|os.O_RDWR, 0644)
-		if err != nil {
-			eLog.Println("when create indexFile.", err)
-			return
-		}
-		//db.Pages[indexFilePath] = IndexsFile
-		IndexsFile.Close()
-	}
-
-	iLog.Println("indexFilePath is ", indexFilePath)
-
-}
-
-func initIndex() {
-	indexFilePath := db.Name + db.Collection + pi
-	db.PrimaryIndex = lastIndex(indexFilePath)
-	IndexsCache = *NewCachedIndexs()
-
-	println("initialize Cached indexs, length is  ", len(IndexsCache.indexs))
-}
-
-func (cachedIndexs *CachedIndexs) GetIndex(id int) (pageName string, index [2]int64) {
-	return strconv.Itoa(int(id) / 1000), cachedIndexs.indexs[id]
-}
+// list of Index type
+var Indexs = make(map[string]*Index)
 
 // initialize cache of indexs
-func NewCachedIndexs() *CachedIndexs {
-	path := db.Name + db.Collection + pi
+func InitIndex() map[string]*Index {
+	indexs := make(map[string]*Index)
 
-	cachedIndexs := &CachedIndexs{
-		indexs: make([][2]int64, 0),
-	}
+	indxBuffer := make([]byte, IndexChunkLen)
 
-	indxBuffer := make([]byte, IndexChnucLen)
-
-	for {
-		//iLog.Println("indexFilePath: ", path)
-		// iLog.Println("len of pages : ", len(db.Pages))
-
-		n, err := db.Pages[path].Read(indxBuffer)
-		if err != nil && err != io.EOF {
-			eLog.Printf("ERROR! wher os.Read %s file %v", path, err)
-			iLog.Println("index file is ", db.Pages[path])
-			os.Exit(1)
-		}
-		if err == io.EOF {
-			break
+	// get all collection in this database first
+	for _, indexfile := range getCollections(db.Name) {
+		indexfile = db.Name + indexfile
+		index := &Index{
+			at:           0,
+			primaryIndex: 0,
+			indexCache:   make([][2]int64, 0),
 		}
 
-		slicIndexe := strings.Split(string(indxBuffer[:n]), " ")
+		for {
+			n, err := db.Pages[indexfile].Read(indxBuffer)
+			if err != nil && err != io.EOF {
+				eLog.Println("file is : ", err)
+				os.Exit(1)
+			}
+			if err == io.EOF {
+				break
+			}
 
-		at, _ := strconv.ParseInt(slicIndexe[0], 10, 64)
-		size, _ := strconv.ParseInt(slicIndexe[1], 10, 64)
+			slicIndexe := strings.Split(string(indxBuffer[:n]), " ")
 
-		cachedIndexs.indexs = append(cachedIndexs.indexs, [2]int64{at, size})
+			// TODO check bug here
+			if len(slicIndexe) == 1 {
+				eLog.Println("len slicIndexe is just 1", slicIndexe[0])
+				continue
+			}
+
+			at, _ := strconv.ParseInt(slicIndexe[0], 10, 64)
+			size, _ := strconv.ParseInt(slicIndexe[1], 10, 64)
+
+			index.indexCache = append(index.indexCache, [2]int64{at, size})
+		}
+
+		indexs[indexfile] = index
+
+		lst, primary := lasts(indexfile)
+		indexs[indexfile].at = lst               // check here
+		indexs[indexfile].primaryIndex = primary // check here
 	}
-	iLog.Println("primary indexs length : ", len(cachedIndexs.indexs))
+	/*
+		for k, v := range indexs {
+			fmt.Printf("at in %s is %d\n", k, v.at)
+			fmt.Printf("pi in %s is %d\n", k, v.primaryIndex)
+		}
+	*/
 
-	At = cachedIndexs.lastAt()
-
-	return cachedIndexs
+	return indexs
 }
 
 // get last data location
-func (cachedIndexs *CachedIndexs) lastAt() int {
-	/*
-		info, _ := os.Stat(db.Name + db.Collections + "0")
-		fmt.Println("At is : ", info.Size())
-
-	*/
-	if len(cachedIndexs.indexs) > 0 {
-		at := int(cachedIndexs.indexs[len(cachedIndexs.indexs)-1][0] + cachedIndexs.indexs[len(cachedIndexs.indexs)-1][1])
-		println("At is ", at)
-		return at
+func lasts(path string) (int64, int64) {
+	info, err := os.Stat(path)
+	if err != nil {
+		// TODO
+		eLog.Printf(path, err)
+		return 0, 0 // panic("ERROR! no primary.index file ")
 	}
-	return 0
+
+	size := info.Size()
+
+	at := size - 20
+	buf := make([]byte, 20)
+	f, _ := os.OpenFile(path, os.O_RDONLY, 0644)
+	f.ReadAt(buf, at)
+
+	slc := strings.Split(string(buf), " ")
+	lastat, _ := strconv.ParseInt(slc[0], 10, 64)
+
+	lastPrimaryIndex := size / 20
+
+	return lastat, lastPrimaryIndex
 }
 
 // LastIndex return last index in table
 func lastIndex(path string) int64 {
-	iLog.Println("path in last index func is ", path)
 	info, err := os.Stat(path)
 	if err != nil {
 		// TODO
@@ -112,39 +117,52 @@ func lastIndex(path string) int64 {
 		return 0 // panic("ERROR! no primary.index file ")
 	}
 
-	iLog.Println("last index is", info.Size()/20)
 	return info.Size() / 20
 }
 
 // append new index in pi file
-func NewIndex(indexFile *os.File, at int, dataSize int) {
+func AppendIndex(indexFile *os.File, at int64, dataSize int) {
 
 	strInt := fmt.Sprint(at) + " " + fmt.Sprint(dataSize)
 
-	numSpaces := IndexChnucLen - len(strInt)
+	numSpaces := IndexChunkLen - len(strInt)
 	for i := 0; i < numSpaces; i++ {
 		strInt += " "
 	}
 
-	//indexFile.WriteString(strInt)
-	indexFile.WriteAt([]byte(strInt), db.PrimaryIndex*20)
+	ipath := db.Name + collection + pIndex
 
-	IndexsCache.indexs = append(IndexsCache.indexs, [2]int64{int64(at), int64(dataSize)})
+	_, err := indexFile.WriteAt([]byte(strInt), Indexs[ipath].primaryIndex*20) // indexfile.Name()
+	if err != nil {
+		eLog.Println("err when UpdateIndex", err)
+	}
+
+	Indexs[ipath].indexCache = append(Indexs[ipath].indexCache, [2]int64{at, int64(dataSize)})
+	// TODO use assgined via index insteade append here e.g indexs[coll].indexs[id] = [2]int64{at, dataSize}
 }
 
-// deletes index from primary.index file
-func DeleteIndex(indxfile *os.File, id int) { //
-	at := int64(id * 20)
-	indxfile.WriteAt([]byte("                    "), at)
-	// TODO delete index from indexCache
+// update index val in primary.index file & cache index file
+func UpdateIndex(indexFile *os.File, id int, dataAt, dataSize int64) {
+
+	at := int64(id * 20) // shnuck
+
+	strIndex := fmt.Sprint(dataAt) + " " + fmt.Sprint(dataSize) + " "
+
+	_, err := indexFile.WriteAt([]byte(strIndex), at)
+	if err != nil {
+		fmt.Println("id & at is ", id, at)
+		eLog.Println("err when UpdateIndex", err)
+	}
+
+	Indexs[db.Name+collection+pIndex].indexCache[id] = [2]int64{dataAt, dataSize}
 }
 
 // get pageName Data Location  & data size from primary.indexes file
 func GetIndex(indexFile *os.File, id int) (pageName string, at, size int64) {
 
 	pageName = strconv.Itoa(id / int(MaxObjects))
-	bData := make([]byte, 20)
-	_, err := indexFile.ReadAt(bData, int64(id*20))
+	bData := make([]byte, IndexChunkLen)
+	_, err := indexFile.ReadAt(bData, int64(id*IndexChunkLen))
 	if err != nil {
 		panic(err)
 	}
@@ -156,27 +174,14 @@ func GetIndex(indexFile *os.File, id int) (pageName string, at, size int64) {
 	return pageName, int64(iat), int64(isize)
 }
 
-// update index val in primary.index file
-func UpdateIndex(indexFile *os.File, id int, dataAt, dataSize int64) {
-
+// deletes index from primary.index file
+func DeleteIndex(indxfile *os.File, id int) { //
 	at := int64(id * 20)
 
-	strIndex := fmt.Sprint(dataAt) + " " + fmt.Sprint(dataSize)
-	for i := len(strIndex); i < 20; i++ {
-		strIndex += " "
-	}
+	// TODO SEARCH for how can i controll size of file without use string space ?
+	indxfile.WriteAt([]byte("                    "), at)
 
-	_, err := indexFile.WriteAt([]byte(strIndex), at)
-	if err != nil {
-		fmt.Println("id & at is ", id, at)
-		fmt.Println("err when UpdateIndex, store.go ", err)
-
-	}
-
-	// TODO update index in indexsCache
-	//	fmt.Println("IndexCace befor\n", IndexsCache.indexs)
-	IndexsCache.indexs[id] = [2]int64{dataAt, dataSize}
-	// fmt.Println("IndexCache after: \n", IndexsCache.indexs)
+	// TODO Delete index from indexCache or use a Bloom filter to avoid unnecessary file reading.
 }
 
 //end

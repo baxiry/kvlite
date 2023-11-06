@@ -1,29 +1,25 @@
+// Zaradb lite faset document database
 package main
 
 import (
-	"dblite"
 	"net/http"
-
-	"github.com/go-chi/chi"
+	db "zaradb/dblite"
 )
 
-var engine = dblite.NewEngine()
+var engine = db.NewEngine()
 
 func main() {
+	// TODO close programe greatfully.
 
 	engine.Run()
-
-	// TODO close programe greatfully
 	defer engine.Stop()
 
-	// start network
-	router := chi.NewRouter()
-
-	router.Get("/ws", dblite.Ws)
+	// standard endpoint
+	http.HandleFunc("/ws", Ws)
 
 	// endpoints for speed network
-	router.Get("/query", dblite.Resever)
-	router.Get("/result", dblite.Sender)
+	http.HandleFunc("/query", Resever)
+	http.HandleFunc("/result", Sender)
 
-	http.ListenAndServe(":1111", router)
+	http.ListenAndServe(":1111", nil)
 }

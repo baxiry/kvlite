@@ -1,71 +1,48 @@
 package dblite
 
 import (
-	"fmt"
 	"os"
-	"strings"
 
 	"github.com/tidwall/gjson"
 )
 
+// ok
 func HandleQueries(query string) string {
-	action := gjson.Get(query, "action")
-
-	switch action.String() {
+	switch gjson.Get(query, "action").String() {
+	case "find":
+		return Find(query)
 	case "insert":
 		return Insert(query)
 
-	case "select":
-
+	case "selectById":
 		return SelectById(query)
 
 	case "update":
-
-		return Update(query) // db.Name = RootPath
+		return Update(query)
 
 	case "delete":
-		DeleteById(query)
-		return "action is Delete"
+		return DeleteById(query)
 
+	// manage database
+	case "create_collection":
+		return CreateCollection(query)
+
+	case "delete_collection":
+		return DeleteCollection(query)
+
+	case "show_collection":
+		return showCollections(db.Name)
+
+	case "select":
+		return findByField(query, "filter")
 	default:
-		return "unknowena ction"
-
+		return "unknowen action"
 	}
-
-	//return result.String()
 }
 
-// extractQuery from stdin argument
-func extractQuery(str string) (json string) {
-	var start, end int32
-
-	var i int32
-	for i = 0; i < int32(len(str)); i++ {
-		if str[i] == '{' {
-			start = i
-			break
-		}
-	}
-	for i = int32(len(str)) - 1; i >= 0; i-- {
-		if str[i] == '}' {
-			end = i
-			break
-		}
-	}
-	return str[start : end+1]
-}
-
-// cli functions
-
-const hints = `tap helpe to get help massage`
-
-func arguments() (args []string) {
-	args = os.Args
-	if len(args) < 2 || args[1] == "" {
-		fmt.Println("not enought arguments")
-		return
-	}
-	return strings.Split(args[1], ".")
+// extract filter
+func findByField(json, field string) string {
+	return gjson.Get(json, field).String()
 }
 
 // Rename renames db.
@@ -80,14 +57,8 @@ func RemoveDB(dbName string) (err error) {
 
 // CreateDB create db. TODO return this directly
 func CreateDB(dbName string) (string, error) {
-	// _, err = os.Stat("go.mod")
-	//	if os.IsNotExist(err) {return err}
 
-	err := os.MkdirAll(db.Name+"/.Trash/", 0755)
-	if err != nil {
-		return dbName, err
-	}
-	return dbName, nil
+	return dbName + "is created", nil
 }
 
 // DeleteDB deletes db. (free hard drive).

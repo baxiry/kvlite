@@ -6,19 +6,16 @@ var db = NewDatabase("test")
 
 func (Enginge) Run() {
 
-	// println("Engine Runing...")
+	// open all data pages
 	db.Open()
 
 	// check & init index map & firs page store
-	initIndexsFile()
-
-	//db := NewDatabase()
-	initIndex()
-
+	initIndexs()
+	println("ZARADB is runing on :" + PORT)
 }
 
 func (Enginge) Stop() {
-	println("Enginge Closing...")
+	println("Enginge stop...")
 	db.Close()
 }
 

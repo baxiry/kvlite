@@ -1,17 +1,26 @@
 package dblite
 
 import (
-	"log"
+	"errors"
 	"os"
 )
 
-var iLog = log.New(os.Stdout, "\n\033[33mINFO!:  \033[0m", log.Lshortfile)  // log.LstdFlags|
-var eLog = log.New(os.Stdout, "\n\033[31mERROR!:  \033[0m", log.Lshortfile) // log.LstdFlags|
-/*
-func init() {
+func initIndexs() {
+	// initialize Primaryindexs file if not exist cache
+	indexFilePath := db.Name + testCollection + pIndex
+	_, err := os.Stat(indexFilePath)
+	if errors.Is(err, os.ErrNotExist) {
+		IndexsFile, err := os.OpenFile(indexFilePath, os.O_CREATE|os.O_RDWR, 0644)
+		if err != nil {
+			eLog.Println("when create indexFile.", err)
+			return
+		}
+		//db.Pages[indexFilePath] = IndexsFile
+		IndexsFile.Close()
+	}
 
-	log.SetFlags(0) // Remove the default flags
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-
+	// initialize indexs cache
+	Indexs = InitIndex()
 }
-*/
+
+//end
