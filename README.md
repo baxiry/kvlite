@@ -1,2 +1,2 @@
 # DBLite 
-dblite is simple embeded document database for learning purposes
+dblite is simple embeded document database.
