@@ -1,25 +1,49 @@
-// Zaradb lite faset document database
 package main
 
 import (
-	"net/http"
-	db "zaradb/dblite"
+	"fmt"
+	"kvlite"
+	"time"
 )
 
-var engine = db.NewEngine()
+var max = 1000000
 
+// main
 func main() {
-	// TODO close programe greatfully.
 
-	engine.Run()
-	defer engine.Stop()
+	//tables := make(map[string]*kvlite.Database)
 
-	// standard endpoint
-	http.HandleFunc("/ws", Ws)
+	db := kvlite.Open("users/")
 
-	// endpoints for speed network
-	http.HandleFunc("/query", Resever)
-	http.HandleFunc("/result", Sender)
+	defer db.Close()
 
-	http.ListenAndServe(":1111", nil)
+	// test writing
+	start := time.Now()
+
+	for i := 0; i < max; i++ {
+		key := "users:" + fmt.Sprint(i)
+
+		db.Put(key, "hello m"+key)
+
+	}
+
+	fmt.Println("put done in :", time.Since(start))
+
+	fmt.Println()
+
+	start = time.Now()
+
+	ln := 0
+	for i := 0; i < max; i++ {
+		d := db.Get("users:" + fmt.Sprint(i))
+		ln += len(d)
+	}
+
+	fmt.Println("get done in :", time.Since(start))
+	fmt.Println("len data : ", ln)
+
+	time.Sleep(time.Second * 1)
+
+	fmt.Println("data : ", db.Get("users:8899"))
+
 }
