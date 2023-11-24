@@ -1,4 +1,4 @@
-# kvLite 
+# kvlite 
 kvlite is simple fast embeded kv store,
 
 I discovered by chance while developing the Zaradb that I designed a very similar storage engine with BitCask design.
