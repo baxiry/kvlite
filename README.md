@@ -35,10 +35,13 @@ func main() {
 ## Note
 kvlite now follows Bitcask design with some adjustments that serve the goals of the zaradb.
 
-## Similar projects:
-https://github.com/basho/bitcask.
-https://github.com/isgasho/bitcask.
-https://github.com/rosedblabs/rosedb.
+## Similar projects
+https://github.com/basho/bitcask
+
+https://github.com/isgasho/bitcask
+
+https://github.com/rosedblabs/rosedb
+
 
 
 ## license BSD-3
