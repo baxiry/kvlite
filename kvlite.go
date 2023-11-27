@@ -28,7 +28,7 @@ func (db *Database) Set(key, value string) {
 	size := int64(len(value))
 
 	// TODO use string builder to reduce memory consomption
-	location := "\ni " + fmt.Sprint(key) + " " + fmt.Sprint(db.at) + " " + fmt.Sprint(size) + " 0\n"
+	location := "\ni " + key + " " + fmt.Sprint(db.at) + " " + fmt.Sprint(size) + " 0\n"
 
 	db.pages[db.afile].Write([]byte(value + location))
 
@@ -70,7 +70,7 @@ func Open(path string) *Database {
 
 	db := &Database{}
 
-	db.indexs = map[string][3]int64{}
+	db.indexs = db.reIndex() //map[string][3]int64{}
 	db.pages = make(map[string]*os.File)
 	afile := "0" // active file
 	db.path = path
@@ -138,7 +138,6 @@ func Open(path string) *Database {
 func (db *Database) reIndex() (indexs map[string][3]int64) {
 	// Read the entire file into a byte slice
 	indexs = make(map[string][3]int64)
-	fmt.Println("db pages :", db.pages)
 
 	for f := range db.pages {
 		fileContent, err := os.ReadFile(f)
