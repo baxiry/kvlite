@@ -22,8 +22,8 @@ type Database struct {
 	path   string
 }
 
-// Put saves data
-func (db *Database) Put(key, value string) {
+// Set inserts new or update exist value
+func (db *Database) Set(key, value string) {
 
 	size := int64(len(value))
 
@@ -46,12 +46,13 @@ func (db *Database) Get(key string) string {
 	// "i 0 199 45 0"
 
 	at := db.indexs[key][0]
-	page := "users/0" //db.indexs[key][1]
 	size := db.indexs[key][1]
 
 	buffer := make([]byte, size)
 
-	db.pages[page].ReadAt(buffer, at)
+	page := strconv.Itoa(int(db.indexs[key][2]))
+
+	db.pages[db.path+page].ReadAt(buffer, at)
 
 	return string(buffer)
 }

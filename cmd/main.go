@@ -6,44 +6,37 @@ import (
 	"time"
 )
 
-var max = 1000000
+var max = 100000
 
 // main
 func main() {
 
-	//tables := make(map[string]*kvlite.Database)
+	// first db
+	db := kvlite.Open("db1/")
 
-	db := kvlite.Open("users/")
+	l := 0
+	for j := 0; j < 30; j++ {
 
-	defer db.Close()
+		s := time.Now()
+		for i := 0; i < max; i++ {
+			key := "users:" + fmt.Sprint(i)
+			db.Set(key, "hello from db1 id"+key)
+		}
 
-	// test writing
-	start := time.Now()
+		fmt.Println("\nSet in ", time.Since(s))
 
-	for i := 0; i < max; i++ {
-		key := "users:" + fmt.Sprint(i)
+		time.Sleep(time.Second)
+		s = time.Now()
 
-		db.Put(key, "hello m"+key)
+		l = 0
+		for i := 0; i < max; i++ {
+			l += len(db.Get("users:" + fmt.Sprint(i)))
+		}
+		fmt.Println("Get in ", time.Since(s))
+
+		fmt.Println("\n\ndata & size: ", l, db.Get("users:2999"))
+		time.Sleep(time.Second)
 
 	}
-
-	fmt.Println("put done in :", time.Since(start))
-
-	fmt.Println()
-
-	start = time.Now()
-
-	ln := 0
-	for i := 0; i < max; i++ {
-		d := db.Get("users:" + fmt.Sprint(i))
-		ln += len(d)
-	}
-
-	fmt.Println("get done in :", time.Since(start))
-	fmt.Println("len data : ", ln)
-
-	time.Sleep(time.Second * 1)
-
-	fmt.Println("data : ", db.Get("users:8899"))
 
 }
