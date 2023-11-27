@@ -11,13 +11,22 @@ type Config struct {
 	Path string
 }
 
+type index struct {
+	// location format is :
+	// "i <key> <at> <size> <page-name>"
+	// "i 0 199 45 0"
+	key  string
+	page string
+	at   int64
+	size int
+}
+
 type Database struct {
 	name   string
 	index  int64
-	at     int64
-	page   int
+	lastat int64
 	pages  map[string]*os.File
-	indexs map[string][3]int64
+	indexs map[string]index
 	afile  string
 	path   string
 }
@@ -25,17 +34,17 @@ type Database struct {
 // Set inserts new or update exist value
 func (db *Database) Set(key, value string) {
 
-	size := int64(len(value))
+	size := len(value)
 
 	// TODO use string builder to reduce memory consomption
-	location := "\ni " + key + " " + fmt.Sprint(db.at) + " " + fmt.Sprint(size) + " 0\n"
+	location := "\ni " + key + " " + fmt.Sprint(db.lastat) + " " + fmt.Sprint(size) + " 0\n"
 
 	db.pages[db.afile].Write([]byte(value + location))
 
 	// indexs
-	db.indexs[key] = [3]int64{db.at, size, 0}
+	db.indexs[key] = index{at: db.lastat, size: size, page: "0"}
 
-	db.at += size + int64(len(location))
+	db.lastat += int64(size) + int64(len(location))
 }
 
 // Get data by key
@@ -44,15 +53,11 @@ func (db *Database) Get(key string) string {
 	// location format is :
 	// "i <key> <at> <size> <page-name>"
 	// "i 0 199 45 0"
+	index := db.indexs[key]
 
-	at := db.indexs[key][0]
-	size := db.indexs[key][1]
+	buffer := make([]byte, index.size)
 
-	buffer := make([]byte, size)
-
-	page := strconv.Itoa(int(db.indexs[key][2]))
-
-	db.pages[db.path+page].ReadAt(buffer, at)
+	db.pages[db.path+index.page].ReadAt(buffer, index.at)
 
 	return string(buffer)
 }
@@ -135,9 +140,11 @@ func Open(path string) *Database {
 }
 
 // rebuilds indexs
-func (db *Database) reIndex() (indexs map[string][3]int64) {
+func (db *Database) reIndex() (indexs map[string]index) {
 	// Read the entire file into a byte slice
-	indexs = make(map[string][3]int64)
+
+	indexs = make(map[string]index)
+	//indexs = make(map[string][3]int64)
 
 	for f := range db.pages {
 		fileContent, err := os.ReadFile(f)
@@ -157,7 +164,8 @@ func (db *Database) reIndex() (indexs map[string][3]int64) {
 				at, _ := strconv.Atoi(pos[2])
 				size, _ := strconv.Atoi(pos[3])
 				//page, _ := strconv.Atoi(pos[4])
-				indexs[pos[1]] = [3]int64{int64(at), int64(size)}
+
+				indexs[pos[1]] = index{at: int64(at), size: size}
 			}
 		}
 
