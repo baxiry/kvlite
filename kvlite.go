@@ -18,41 +18,41 @@ type index struct {
 	// "i <key> <at> <size> <page-name>"
 	// "i 0 199 45 0"
 
-	collect string
-	page    string
-	id      int64
-	at      int64
-	size    int
+	page int
+	id   int64
+	at   int64
+	size int
 }
 
 type Database struct {
 	name   string
+	page   int
 	index  int64
 	lastat int64
 	pages  map[string]*os.File
-	indexs []index
+	indexs map[string]index
 	afile  string
 	path   string
 }
 
 // Set inserts new or update exist value
-func (db *Database) Set(key int, value string) {
+func (db *Database) Set(key string, value string) {
 
 	size := len(value)
 
 	// TODO use string builder to reduce memory consomption
-	location := "\ni " + fmt.Sprint(key) + " " + fmt.Sprint(db.lastat) + " " + fmt.Sprint(size) + " 0\n"
+	location := "\ni " + key + " " + fmt.Sprint(db.lastat) + " " + fmt.Sprint(size) + " 0\n"
 
 	db.pages[db.afile].Write([]byte(value + location))
 
 	// indexs
-	db.indexs = append(db.indexs, index{at: db.lastat, size: size, page: "0"})
+	db.indexs[key] = index{at: db.lastat, size: size, page: db.page}
 
 	db.lastat += int64(size) + int64(len(location))
 }
 
 // Get data by key
-func (db *Database) Get(key int) string {
+func (db *Database) Get(key string) string {
 
 	// location format is :
 	// "i <key> <at> <size> <page-name>"
@@ -61,7 +61,7 @@ func (db *Database) Get(key int) string {
 
 	buffer := make([]byte, index.size)
 
-	db.pages[db.path+index.page].ReadAt(buffer, index.at)
+	db.pages[db.path+fmt.Sprint(index.page)].ReadAt(buffer, index.at)
 
 	return string(buffer)
 }
@@ -132,10 +132,10 @@ func Open(path string) *Database {
 }
 
 // rebuilds indexs
-func (db *Database) reIndex() (indexs []index) {
+func (db *Database) reIndex() (indexs map[string]index) {
 	// Read the entire file into a byte slice
 
-	indexs = make([]index, 0)
+	indexs = make(map[string]index)
 
 	for f := range db.pages {
 		fileContent, err := os.ReadFile(f)
@@ -156,10 +156,7 @@ func (db *Database) reIndex() (indexs []index) {
 				at, _ := strconv.Atoi(pos[2])
 				size, _ := strconv.Atoi(pos[3])
 
-				page, _ := strconv.Atoi(pos[1])
-				fmt.Println("rIndex page: ", page)
-
-				indexs[page] = index{at: int64(at), size: size}
+				indexs[pos[1]] = index{at: int64(at), size: size}
 			}
 		}
 

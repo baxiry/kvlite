@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var max = 10000
+var max = 10
 
 // main
 func main() {
@@ -17,7 +17,8 @@ func main() {
 
 	s := time.Now()
 	for i := 0; i < max; i++ {
-		db.Set(i, "hello world:"+fmt.Sprint(i))
+		key := fmt.Sprint(i)
+		db.Set(key, "hello world:"+key)
 	}
 	fmt.Println(time.Since(s))
 	s = time.Now()
@@ -26,11 +27,11 @@ func main() {
 
 	l := 0
 	for i := 0; i < max; i++ {
-		l += len(db.Get(i))
+		l += len(db.Get(fmt.Sprint(i)))
 	}
 	fmt.Println(time.Since(s))
 
-	data := db.Get(123)
+	data := db.Get("3")
 	fmt.Println("len & data:", l, data)
 
 }
