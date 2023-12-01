@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-//const maxItem = 1000000
-
 type Config struct {
 	Path string
 }
@@ -18,11 +16,10 @@ type index struct {
 	// "i <key> <at> <size> <page-name>"
 	// "i 0 199 45 0"
 
-	collect string
-	page    string
-	id      int64
-	at      int64
-	size    int
+	//page string
+	id   int64
+	at   int64
+	size int
 }
 
 type Database struct {
@@ -30,13 +27,13 @@ type Database struct {
 	index  int64
 	lastat int64
 	pages  map[string]*os.File
-	indexs []index
+	indexs map[uint]index
 	afile  string
 	path   string
 }
 
 // Set inserts new or update exist value
-func (db *Database) Set(key int, value string) {
+func (db *Database) Set(key uint, value string) {
 
 	size := len(value)
 
@@ -46,13 +43,13 @@ func (db *Database) Set(key int, value string) {
 	db.pages[db.afile].Write([]byte(value + location))
 
 	// indexs
-	db.indexs = append(db.indexs, index{at: db.lastat, size: size, page: "0"})
+	db.indexs[key] = index{at: db.lastat, size: size}
 
 	db.lastat += int64(size) + int64(len(location))
 }
 
 // Get data by key
-func (db *Database) Get(key int) string {
+func (db *Database) Get(key uint) string {
 
 	// location format is :
 	// "i <key> <at> <size> <page-name>"
@@ -61,9 +58,17 @@ func (db *Database) Get(key int) string {
 
 	buffer := make([]byte, index.size)
 
-	db.pages[db.path+index.page].ReadAt(buffer, index.at)
+	db.pages[db.path+"0"].ReadAt(buffer, index.at)
 
 	return string(buffer)
+}
+
+func (db *Database) ShowIndexs() {
+
+	for k, v := range db.indexs {
+		fmt.Println(k, v)
+	}
+	fmt.Println("len indexs : ", len(db.indexs))
 }
 
 // Open initialaze db pages
@@ -71,7 +76,7 @@ func Open(path string) *Database {
 
 	db := &Database{}
 
-	db.indexs = db.reIndex()
+	db.indexs = db.reIndex() //map[string][3]int64{}
 	db.pages = make(map[string]*os.File)
 	afile := "0" // active file
 	db.path = path
@@ -96,6 +101,8 @@ func Open(path string) *Database {
 		return db
 	}
 
+	fmt.Println("read dir", db.path)
+
 	err := os.Mkdir(db.path, 0744)
 	check("Mkdir ", err)
 
@@ -109,20 +116,22 @@ func Open(path string) *Database {
 	check("ReadDir ", err)
 
 	for k, f := range files {
+		fmt.Println(f.Name())
 
 		dpage := db.path + f.Name()
 
 		file, err := os.OpenFile(dpage, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 		check("", err)
 
+		db.pages[fmt.Sprint(k)] = file
 		fmt.Println("f.name:", f.Name())
-
 		fmt.Println("k:", k)
 
 		fmt.Println("data page : ", dpage)
 		db.pages[dpage] = file
 
 		db.afile = dpage
+		fmt.Println("file active is : ", db.afile)
 	}
 
 	fmt.Println("afile : ", afile)
@@ -132,10 +141,11 @@ func Open(path string) *Database {
 }
 
 // rebuilds indexs
-func (db *Database) reIndex() (indexs []index) {
+func (db *Database) reIndex() (indexs map[uint]index) {
 	// Read the entire file into a byte slice
 
-	indexs = make([]index, 0)
+	indexs = make(map[uint]index)
+	//indexs = make(map[string][3]int64)
 
 	for f := range db.pages {
 		fileContent, err := os.ReadFile(f)
@@ -147,7 +157,6 @@ func (db *Database) reIndex() (indexs []index) {
 		// Process each line
 		for _, line := range lines {
 			if len(line) == 0 {
-				fmt.Println("line = ", 0)
 				return
 			}
 			if line[0] == 'i' {
@@ -155,15 +164,15 @@ func (db *Database) reIndex() (indexs []index) {
 				pos := strings.Fields(line)
 				at, _ := strconv.Atoi(pos[2])
 				size, _ := strconv.Atoi(pos[3])
-
 				page, _ := strconv.Atoi(pos[1])
-				fmt.Println("rIndex page: ", page)
 
-				indexs[page] = index{at: int64(at), size: size}
+				indexs[uint(page)] = index{at: int64(at), size: size}
 			}
 		}
 
 	}
+	fmt.Println(indexs)
+
 	return indexs
 }
 
@@ -180,13 +189,4 @@ func check(hint string, err error) {
 		fmt.Println(hint, err)
 		//return
 	}
-}
-
-func (db *Database) ShowIndexs() {
-
-	for k, v := range db.indexs {
-		fmt.Println(k, v)
-	}
-
-	fmt.Println("len indexs : ", len(db.indexs))
 }
