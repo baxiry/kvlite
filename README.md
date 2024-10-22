@@ -22,7 +22,7 @@ func main() {
   db := kvlite.Open("dbName/")
   defer db.Close()
 
-  // inser, or update if key is exist
+  // insert, or update if key is exist
   db.Put("key", "hello world!")
 
   // get data by key
@@ -30,18 +30,6 @@ func main() {
 
   println(value) // "hello world"
 }
-
 ```
-## Note
-kvlite now follows Bitcask design with some adjustments that serve the goals of the zaradb.
-
-## Similar projects
-https://github.com/basho/bitcask
-
-https://github.com/isgasho/bitcask
-
-https://github.com/rosedblabs/rosedb
-
-
 
 ## license BSD-3
